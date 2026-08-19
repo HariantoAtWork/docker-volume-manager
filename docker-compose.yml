@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      VOLUME_BIND: ${VOLUME_BIND:-dvm-workspace}
+      VOLUME_PATH: /mnt/volume
+      DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - workspace:/mnt/volume
+    restart: unless-stopped
+
+volumes:
+  workspace:
+    name: ${VOLUME_BIND:-dvm-workspace}
