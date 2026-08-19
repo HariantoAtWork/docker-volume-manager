@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+@theme static {
+  --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Syne', ui-sans-serif, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  --harbour-ink: #121820;
+  --harbour-dusk: #1c2733;
+  --harbour-sodium: #e2a15a;
+  --harbour-seaglass: #6a9b96;
+  --harbour-stamp: #d4c4a8;
+  --harbour-flare: #c45c4a;
+}
+
+html {
+  background-color: var(--harbour-ink);
+}
+
+.dark {
+  --harbour-ink: #121820;
+  --harbour-dusk: #1c2733;
+  --harbour-stamp: #d4c4a8;
+}
+
+.light {
+  --harbour-ink: #e7edf2;
+  --harbour-dusk: #d5dee6;
+  --harbour-sodium: #b8751f;
+  --harbour-stamp: #3d4a54;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.cargo-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.12rem 0.5rem 0.12rem 0.65rem;
+  border: 1px dashed color-mix(in oklab, var(--harbour-sodium) 50%, transparent);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--harbour-sodium) 8%, transparent),
+      transparent 40%
+    );
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% 100%,
+    8px 100%,
+    0 50%
+  );
+}
+
+.cargo-tag__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
+}
+
+.cargo-tag__port {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--harbour-seaglass);
+}
+
+.cargo-tag__bound {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--harbour-sodium);
+}
+
+.wordmark-rule {
+  height: 2px;
+  background: linear-gradient(90deg, var(--harbour-sodium), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

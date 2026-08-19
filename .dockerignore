@@ -1,0 +1,16 @@
+node_modules
+.nuxt
+.output
+.data
+.nitro
+.cache
+.git
+.agents
+.claude
+.cursor
+.changelog
+*.md
+!README.md
+.env
+.env.*
+!.env.example
