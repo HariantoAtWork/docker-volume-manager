@@ -113,9 +113,13 @@ async function confirmPrune() {
           Volumes
         </h1>
         <p class="mt-1 max-w-xl text-sm text-muted">
-          Named cargo on this engine. Bind one with
-          <code class="font-mono text-xs">VOLUME_BIND</code>
-          to browse it from disk, or open any volume through a helper container.
+          Named cargo on this engine. Compose reads files from
+          <code class="font-mono text-xs">/var/lib/docker/volumes</code>
+          after nsenter. Local
+          <code class="font-mono text-xs">bun run dev</code>
+          still uses a helper container unless
+          <code class="font-mono text-xs">VOLUME_PATH</code>
+          is set.
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -143,11 +147,11 @@ async function confirmPrune() {
     />
 
     <UAlert
-      v-else-if="appConfig?.volumeBind && !appConfig.volumePathMounted"
+      v-else-if="appConfig && !appConfig.hostVolumesAccessible && appConfig.volumeBind && !appConfig.volumePathMounted"
       color="info"
       icon="i-lucide-info"
       title="Bound volume uses a helper container"
-      :description="`${appConfig.volumeBind} is selected, but VOLUME_PATH is not mounted here. File browsing still works via ${appConfig.helperImage}.`"
+      :description="`${appConfig.volumeBind} is selected, but host Docker volumes and VOLUME_PATH are not visible here. File browsing still works via ${appConfig.helperImage}.`"
     />
 
     <div class="flex flex-wrap items-center gap-3">
@@ -186,7 +190,7 @@ async function confirmPrune() {
       v-if="!pending && !filtered.length"
       icon="i-lucide-container"
       title="No volumes on this engine"
-      description="Create a named volume, or set VOLUME_BIND to the volume you want to browse."
+      description="Create a named volume to inspect it on this engine."
       :actions="[{ label: 'Create volume', onClick: () => { createOpen = true } }]"
     />
 

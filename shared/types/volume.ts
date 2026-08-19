@@ -36,6 +36,7 @@ export interface AppConfigResponse {
   volumeBind: string
   volumePath: string
   volumePathMounted: boolean
+  hostVolumesAccessible: boolean
   helperImage: string
   docker: {
     ok: boolean

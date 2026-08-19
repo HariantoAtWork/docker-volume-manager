@@ -14,7 +14,7 @@ export interface VolumeFileListResponse {
   path: string
   parent: string | null
   entries: VolumeFileEntry[]
-  via: 'bind' | 'helper'
+  via: 'host' | 'bind' | 'helper'
 }
 
 export interface VolumeFileReadResponse {
@@ -27,7 +27,7 @@ export interface VolumeFileReadResponse {
   tooLarge: boolean
   language: string
   content: string | null
-  via: 'bind' | 'helper'
+  via: 'host' | 'bind' | 'helper'
 }
 
 export interface VolumeFileWriteBody {

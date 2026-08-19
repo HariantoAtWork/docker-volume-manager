@@ -1,10 +1,10 @@
-import { access, constants, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { VolumeFileEntry, VolumeFileListResponse, VolumeFileReadResponse, VolumeFileWriteResponse } from '../../shared/types/file'
 import { fileNameFromPath, joinVolumePath, parentVolumePath, toPosixPath } from '../../shared/utils/volume-path'
 import { isBinaryBuffer, isProbablyBinaryName, languageFromPath } from '../../shared/utils/file-meta'
 import { execCommand, getHelperContainer } from './helper-container'
-import { getVolumeRuntime } from './volume-config'
+import { resolveDirectAccess } from './volume-access'
 import { withDockerError } from './docker-error'
 
 export const MAX_EDIT_BYTES = 2 * 1024 * 1024
@@ -33,38 +33,11 @@ ls -1A "$dir" 2>/dev/null | while IFS= read -r name; do
 done
 `.trim()
 
-async function isReadableDir(target: string): Promise<boolean> {
-  try {
-    await access(target, constants.R_OK)
-    return (await stat(target)).isDirectory()
-  }
-  catch {
-    return false
-  }
-}
-
-export async function isVolumePathMounted(): Promise<boolean> {
-  const { volumePath } = getVolumeRuntime()
-  if (!volumePath) {
-    return false
-  }
-  return isReadableDir(volumePath)
-}
-
-export async function canUseBindMount(volumeName: string): Promise<boolean> {
-  const { volumeBind } = getVolumeRuntime()
-  if (!volumeBind || volumeName !== volumeBind) {
-    return false
-  }
-  return isVolumePathMounted()
-}
-
-function resolveLocal(relative: string): string {
-  const { volumePath } = getVolumeRuntime()
+function resolveUnderRoot(root: string, relative: string): string {
   const posix = toPosixPath(relative)
-  const resolved = path.resolve(volumePath, posix)
-  const root = path.resolve(volumePath)
-  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+  const resolved = path.resolve(root, posix)
+  const base = path.resolve(root)
+  if (resolved !== base && !resolved.startsWith(`${base}${path.sep}`)) {
     throw createError({ statusCode: 400, statusMessage: 'Path must stay inside the volume' })
   }
   return resolved
@@ -85,8 +58,13 @@ function mapHelperExit(exitCode: number, stderr: string, fallback: string): neve
   throw createError({ statusCode: 500, statusMessage: stderr.trim() || fallback })
 }
 
-async function listViaFs(volume: string, relative: string): Promise<VolumeFileListResponse> {
-  const dir = resolveLocal(relative)
+async function listViaFs(
+  volume: string,
+  relative: string,
+  root: string,
+  via: 'host' | 'bind'
+): Promise<VolumeFileListResponse> {
+  const dir = resolveUnderRoot(root, relative)
   let entries
   try {
     entries = await readdir(dir, { withFileTypes: true })
@@ -136,7 +114,7 @@ async function listViaFs(volume: string, relative: string): Promise<VolumeFileLi
     path: toPosixPath(relative),
     parent: parentVolumePath(relative),
     entries: mapped,
-    via: 'bind'
+    via
   }
 }
 
@@ -187,14 +165,20 @@ async function listViaHelper(volume: string, relative: string): Promise<VolumeFi
 
 export async function listVolumeFiles(volume: string, relative = ''): Promise<VolumeFileListResponse> {
   joinVolumePath(relative)
-  if (await canUseBindMount(volume)) {
-    return listViaFs(volume, relative)
+  const direct = await resolveDirectAccess(volume)
+  if (direct) {
+    return listViaFs(volume, relative, direct.root, direct.via)
   }
   return listViaHelper(volume, relative)
 }
 
-async function readViaFs(volume: string, relative: string): Promise<VolumeFileReadResponse> {
-  const filePath = resolveLocal(relative)
+async function readViaFs(
+  volume: string,
+  relative: string,
+  root: string,
+  via: 'host' | 'bind'
+): Promise<VolumeFileReadResponse> {
+  const filePath = resolveUnderRoot(root, relative)
   let info
   try {
     info = await stat(filePath)
@@ -224,7 +208,7 @@ async function readViaFs(volume: string, relative: string): Promise<VolumeFileRe
     tooLarge,
     language: languageFromPath(name),
     content: binary || tooLarge ? null : buffer.toString('utf8'),
-    via: 'bind'
+    via
   }
 }
 
@@ -268,8 +252,9 @@ export async function readVolumeFile(volume: string, relative: string): Promise<
   if (!toPosixPath(relative)) {
     throw createError({ statusCode: 400, statusMessage: 'File path is required' })
   }
-  if (await canUseBindMount(volume)) {
-    return readViaFs(volume, relative)
+  const direct = await resolveDirectAccess(volume)
+  if (direct) {
+    return readViaFs(volume, relative, direct.root, direct.via)
   }
   return readViaHelper(volume, relative)
 }
@@ -280,8 +265,9 @@ export async function readVolumeFileBuffer(volume: string, relative: string): Pr
     throw createError({ statusCode: 400, statusMessage: 'File path is required' })
   }
 
-  if (await canUseBindMount(volume)) {
-    const filePath = resolveLocal(relative)
+  const direct = await resolveDirectAccess(volume)
+  if (direct) {
+    const filePath = resolveUnderRoot(direct.root, relative)
     const info = await stat(filePath).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') {
         throw createError({ statusCode: 404, statusMessage: 'File not found in volume' })
@@ -302,8 +288,8 @@ export async function readVolumeFileBuffer(volume: string, relative: string): Pr
   return { buffer: cat.stdout, name: fileNameFromPath(relative) }
 }
 
-async function writeViaFs(relative: string, content: string, expectedMtime?: number): Promise<VolumeFileWriteResponse> {
-  const filePath = resolveLocal(relative)
+async function writeViaFs(root: string, relative: string, content: string, expectedMtime?: number): Promise<VolumeFileWriteResponse> {
+  const filePath = resolveUnderRoot(root, relative)
   try {
     const info = await stat(filePath)
     if (info.isDirectory()) {
@@ -384,8 +370,9 @@ export async function writeVolumeFile(
   if (!toPosixPath(relative)) {
     throw createError({ statusCode: 400, statusMessage: 'File path is required' })
   }
-  if (await canUseBindMount(volume)) {
-    return writeViaFs(relative, content, expectedMtime)
+  const direct = await resolveDirectAccess(volume)
+  if (direct) {
+    return writeViaFs(direct.root, relative, content, expectedMtime)
   }
   return writeViaHelper(volume, relative, content, expectedMtime)
 }

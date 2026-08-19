@@ -15,12 +15,14 @@ export function getVolumeRuntime() {
   const helperImage = envFirst('DVM_HELPER_IMAGE', 'NUXT_HELPER_IMAGE') || String(config.helperImage || 'alpine:3.21')
   const dockerSocket = envFirst('DOCKER_SOCKET', 'NUXT_DOCKER_SOCKET') || String(config.dockerSocket || '')
   const dockerHost = envFirst('DOCKER_HOST', 'NUXT_DOCKER_HOST') || String(config.dockerHost || '')
+  const dockerVolumesDir = envFirst('DOCKER_VOLUMES_DIR', 'NUXT_DOCKER_VOLUMES_DIR') || String(config.dockerVolumesDir || '')
 
   return {
     volumeBind,
     volumePath,
     helperImage,
     dockerSocket,
-    dockerHost
+    dockerHost,
+    dockerVolumesDir
   }
 }

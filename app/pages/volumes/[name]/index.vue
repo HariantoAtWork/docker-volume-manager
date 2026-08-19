@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VolumeInspect } from '#shared/types/volume'
+import type { VolumeFileListResponse } from '#shared/types/file'
 import { formatTimestamp } from '~/utils/format-timestamp'
 
 const route = useRoute()
@@ -26,6 +27,16 @@ function openDirectory(nextPath: string) {
 
 async function refreshAll() {
   await Promise.all([refresh(), refreshFiles()])
+}
+
+function viaLabel(via: VolumeFileListResponse['via']) {
+  if (via === 'host') {
+    return 'host /var/lib/docker'
+  }
+  if (via === 'bind') {
+    return 'VOLUME_PATH'
+  }
+  return 'helper container'
 }
 </script>
 
@@ -82,7 +93,7 @@ async function refreshAll() {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="font-display text-xl">Files</h2>
           <UBadge v-if="listing" color="neutral" variant="subtle">
-            via {{ listing.via === 'bind' ? 'VOLUME_PATH' : 'helper container' }}
+            via {{ viaLabel(listing.via) }}
           </UBadge>
         </div>
 

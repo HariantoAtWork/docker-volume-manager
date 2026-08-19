@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import Dockerode from 'dockerode'
 import { getVolumeRuntime } from './volume-config'
 
@@ -24,23 +25,35 @@ function parseDockerHost(host: string): Dockerode.DockerOptions {
   }
 }
 
+function resolveSocketPath(preferred: string): string {
+  const candidates = [
+    preferred,
+    '/var/run/docker.sock',
+    '/proc/1/root/var/run/docker.sock'
+  ].filter(Boolean)
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return preferred || '/var/run/docker.sock'
+}
+
 export function createDockerClient(): Dockerode {
   const { dockerSocket, dockerHost } = getVolumeRuntime()
 
-  if (dockerSocket) {
-    return new Dockerode({ socketPath: dockerSocket })
+  if (dockerSocket || !dockerHost) {
+    return new Dockerode({ socketPath: resolveSocketPath(dockerSocket) })
   }
 
-  if (dockerHost) {
-    try {
-      return new Dockerode(parseDockerHost(dockerHost))
-    }
-    catch {
-      return new Dockerode({ socketPath: '/var/run/docker.sock' })
-    }
+  try {
+    return new Dockerode(parseDockerHost(dockerHost))
   }
-
-  return new Dockerode({ socketPath: '/var/run/docker.sock' })
+  catch {
+    return new Dockerode({ socketPath: resolveSocketPath('') })
+  }
 }
 
 export function getDocker(): Dockerode {

@@ -16,6 +16,13 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV NITRO_HOST=0.0.0.0
 ENV NITRO_PORT=3000
+USER root
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends util-linux \
+  && rm -rf /var/lib/apt/lists/*
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 COPY --from=build /app/.output ./.output
 EXPOSE 3000
-CMD ["bun", ".output/server/index.mjs"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["nsenter", "-t", "1", "-m", "-u", "-n", "-i", "--", "bun", ".output/server/index.mjs"]

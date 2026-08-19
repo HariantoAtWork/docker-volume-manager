@@ -1,11 +1,12 @@
 import { dockerVersion, getDocker } from '../utils/docker-client'
 import { getVolumeRuntime } from '../utils/volume-config'
-import { isVolumePathMounted } from '../utils/volume-fs'
+import { isHostVolumesAccessible, isVolumePathMounted } from '../utils/volume-access'
 import type { AppConfigResponse } from '../../shared/types/volume'
 
 export default defineEventHandler(async (): Promise<AppConfigResponse> => {
   const runtime = getVolumeRuntime()
   const volumePathMounted = await isVolumePathMounted()
+  const hostVolumesAccessible = await isHostVolumesAccessible()
 
   try {
     await getDocker().ping()
@@ -14,6 +15,7 @@ export default defineEventHandler(async (): Promise<AppConfigResponse> => {
       volumeBind: runtime.volumeBind,
       volumePath: runtime.volumePath,
       volumePathMounted,
+      hostVolumesAccessible,
       helperImage: runtime.helperImage,
       docker: { ok: true, version }
     }
@@ -23,6 +25,7 @@ export default defineEventHandler(async (): Promise<AppConfigResponse> => {
       volumeBind: runtime.volumeBind,
       volumePath: runtime.volumePath,
       volumePathMounted,
+      hostVolumesAccessible,
       helperImage: runtime.helperImage,
       docker: {
         ok: false,

@@ -61,11 +61,14 @@ useHead({
             />
             <span>{{ appConfig?.docker.ok ? `Engine ${appConfig.docker.version}` : 'Engine unreachable' }}</span>
           </p>
-          <p v-if="appConfig?.volumeBind" class="truncate font-mono">
+          <p v-if="appConfig?.hostVolumesAccessible" class="truncate font-mono">
+            Host volumes
+          </p>
+          <p v-else-if="appConfig?.volumeBind" class="truncate font-mono">
             Bound: {{ appConfig.volumeBind }}
           </p>
           <p v-else>
-            No VOLUME_BIND set
+            Helper file access
           </p>
         </div>
         <UIcon

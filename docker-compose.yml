@@ -1,19 +1,36 @@
+# Harbour runs with host PID + privileged, then nsenter's into PID 1
+# (mount, UTS, net, IPC). That is the compose form of:
+#   docker run -it --privileged --pid=host ... nsenter -t 1 -m -u -n -i -- <app>
+#
+# After nsenter -m, /var/lib/docker (and /var/run/docker.sock) are the host's.
+# No volume or socket bind-mounts are required.
+#
+# nsenter -n uses the host network, so Compose `ports:` would not apply —
+# the process listens on the host at PORT (default 3000). Open
+# http://localhost:3000 (or point a Cloudflare tunnel at host:3000).
+# The cloudflared network in docker-compose.override.yml still attaches to
+# the container namespace, which the app process leaves after nsenter.
 services:
   app:
     build: .
-    ports:
-      - '3000:3000'
+    privileged: true
+    pid: host
+    stdin_open: true
+    tty: true
     environment:
       HOST: 0.0.0.0
       PORT: 3000
-      VOLUME_BIND: ${VOLUME_BIND:-dvm-workspace}
-      VOLUME_PATH: /mnt/volume
-      DOCKER_SOCKET: /var/run/docker.sock
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - workspace:/mnt/volume
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+    command:
+      - nsenter
+      - -t
+      - '1'
+      - -m
+      - -u
+      - -n
+      - -i
+      - --
+      - bun
+      - .output/server/index.mjs
     restart: unless-stopped
-
-volumes:
-  workspace:
-    name: ${VOLUME_BIND:-dvm-workspace}

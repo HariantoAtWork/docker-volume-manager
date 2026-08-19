@@ -10,6 +10,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     dockerSocket: '',
     dockerHost: '',
+    dockerVolumesDir: '',
     volumeBind: '',
     volumePath: '',
     helperImage: 'alpine:3.21',
