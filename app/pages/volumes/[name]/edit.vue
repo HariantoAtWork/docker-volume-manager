@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VolumeFileReadResponse, VolumeFileWriteResponse } from '#shared/types/file'
+import { MAX_EDIT_BYTES } from '#shared/utils/file-meta'
 import { formatBytes } from '~/utils/format-bytes'
 
 const route = useRoute()
@@ -24,7 +25,6 @@ const draft = ref('')
 const original = ref('')
 const saving = ref(false)
 const overwriteOpen = ref(false)
-const overwriteForce = ref(false)
 
 watch(file, (next) => {
   if (next?.content != null) {
@@ -35,6 +35,7 @@ watch(file, (next) => {
 
 const dirty = computed(() => draft.value !== original.value)
 const canEdit = computed(() => Boolean(file.value && !file.value.binary && !file.value.tooLarge && file.value.content != null))
+const language = computed(() => file.value?.language || 'plaintext')
 
 function parentHref() {
   const parts = filePath.value.split('/').filter(Boolean)
@@ -79,6 +80,7 @@ async function persist(force = false) {
       color: 'success',
       icon: 'i-lucide-check'
     })
+    await refresh()
   }
   catch (err) {
     const statusCode = (err as { statusCode?: number }).statusCode
@@ -101,7 +103,7 @@ function requestSave() {
   if (!dirty.value) {
     return
   }
-  persist(overwriteForce.value)
+  persist(false)
 }
 
 onBeforeRouteLeave(() => {
@@ -128,7 +130,7 @@ onBeforeRouteLeave(() => {
           {{ file?.name || filePath }}
         </h1>
         <p v-if="file" class="font-mono text-xs text-muted">
-          {{ file.path }} · {{ formatBytes(file.size) }} · {{ file.language }}
+          {{ file.path }} · {{ formatBytes(file.size) }}
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -171,7 +173,7 @@ onBeforeRouteLeave(() => {
       color="warning"
       icon="i-lucide-file-warning"
       title="File is too large to edit"
-      description="The editor opens files up to 2 MB. Download the file to work with it locally."
+      :description="`The editor opens files up to ${formatBytes(MAX_EDIT_BYTES)}. Download the file to work with it locally.`"
     />
 
     <div v-else-if="status === 'pending'" class="space-y-2">
@@ -179,17 +181,42 @@ onBeforeRouteLeave(() => {
       <USkeleton class="h-[28rem] w-full" />
     </div>
 
-    <ClientOnly v-else-if="canEdit">
-      <FilesFileCodeEditor
-        v-model="draft"
-        :language="file?.language || 'plaintext'"
-        class="min-h-[28rem] flex-1"
-        @save="requestSave"
-      />
-      <template #fallback>
-        <USkeleton class="h-[28rem] w-full" />
-      </template>
-    </ClientOnly>
+    <div
+      v-else-if="canEdit"
+      class="flex min-h-[28rem] flex-1 flex-col overflow-hidden rounded-lg border border-default"
+    >
+      <div class="flex flex-wrap items-center gap-2 border-b border-default bg-[var(--harbour-dusk)]/60 px-3 py-1.5">
+        <UBadge
+          :label="language"
+          color="neutral"
+          variant="subtle"
+          class="font-mono uppercase tracking-wider"
+        />
+        <UBadge
+          v-if="dirty"
+          color="warning"
+          variant="subtle"
+          label="Unsaved"
+        />
+        <span class="ms-auto inline-flex items-center gap-1 font-mono text-[11px] text-muted">
+          <UKbd value="meta" size="sm" />
+          <UKbd value="S" size="sm" />
+          save
+        </span>
+      </div>
+      <ClientOnly>
+        <FilesFileCodeEditor
+          :key="filePath"
+          v-model="draft"
+          :language
+          class="min-h-[28rem] flex-1"
+          @save="requestSave"
+        />
+        <template #fallback>
+          <USkeleton class="h-[28rem] w-full" />
+        </template>
+      </ClientOnly>
+    </div>
 
     <UModal
       v-model:open="overwriteOpen"

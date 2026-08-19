@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type * as Monaco from 'monaco-editor'
+import { EditorState, Compartment, Prec } from '@codemirror/state'
+import { EditorView, keymap } from '@codemirror/view'
+import { indentWithTab } from '@codemirror/commands'
+import { basicSetup } from 'codemirror'
+import { languageExtension } from '~/utils/codemirror-language'
+import { harbourTheme } from '~/utils/codemirror-theme'
 
 const { language, readOnly = false } = defineProps<{
   language: string
@@ -11,116 +16,108 @@ const emit = defineEmits<{
 }>()
 
 const model = defineModel<string>({ required: true })
-const el = useTemplateRef<HTMLDivElement>('editor')
+const host = useTemplateRef<HTMLDivElement>('editor')
+const colorMode = useColorMode()
+const failed = ref(false)
 
-let editor: Monaco.editor.IStandaloneCodeEditor | null = null
-let monacoApi: typeof Monaco | null = null
+let view: EditorView | null = null
+const languageComp = new Compartment()
+const themeComp = new Compartment()
+const readOnlyComp = new Compartment()
 let applyingExternal = false
-let workerBlob: string | null = null
 
-function workerUrl(): string {
-  if (workerBlob) {
-    return workerBlob
-  }
-  const base = `${window.location.origin}/monaco/`
-  const source = `self.MonacoEnvironment = { baseUrl: ${JSON.stringify(base)} }; importScripts(${JSON.stringify(`${base}vs/base/worker/workerMain.js`)});`
-  workerBlob = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
-  return workerBlob
+function isDark() {
+  return colorMode.value !== 'light'
 }
 
-onMounted(async () => {
-  self.MonacoEnvironment = {
-    getWorkerUrl: () => workerUrl()
+function mountEditor(el: HTMLDivElement) {
+  view?.destroy()
+  try {
+    view = new EditorView({
+      parent: el,
+      doc: model.value,
+      extensions: [
+        basicSetup,
+        keymap.of([indentWithTab]),
+        Prec.highest(keymap.of([{
+          key: 'Mod-s',
+          preventDefault: true,
+          run: () => {
+            emit('save')
+            return true
+          }
+        }])),
+        languageComp.of(languageExtension(language)),
+        themeComp.of(harbourTheme(isDark())),
+        readOnlyComp.of(EditorState.readOnly.of(readOnly)),
+        EditorView.lineWrapping,
+        EditorView.updateListener.of((update) => {
+          if (!update.docChanged || applyingExternal) {
+            return
+          }
+          model.value = update.state.doc.toString()
+        })
+      ]
+    })
+    failed.value = false
   }
-
-  const monaco = await import('monaco-editor')
-  monacoApi = monaco
-
-  monaco.editor.defineTheme('harbour', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [],
-    colors: {
-      'editor.background': '#121820',
-      'editor.foreground': '#d4c4a8',
-      'editorLineNumber.foreground': '#6a7a88',
-      'editorCursor.foreground': '#e2a15a',
-      'editor.selectionBackground': '#e2a15a33',
-      'editor.lineHighlightBackground': '#1c2733'
-    }
-  })
-
-  if (!el.value) {
-    return
+  catch {
+    view = null
+    failed.value = true
   }
+}
 
-  editor = monaco.editor.create(el.value, {
-    value: model.value,
-    language,
-    theme: 'harbour',
-    automaticLayout: true,
-    minimap: { enabled: false },
-    fontFamily: 'IBM Plex Mono, ui-monospace, monospace',
-    fontSize: 13,
-    lineHeight: 20,
-    readOnly,
-    scrollBeyondLastLine: false,
-    wordWrap: 'on',
-    padding: { top: 16, bottom: 16 },
-    renderLineHighlight: 'line',
-    smoothScrolling: true
-  })
-
-  editor.onDidChangeModelContent(() => {
-    if (applyingExternal) {
-      return
-    }
-    const next = editor?.getValue()
-    if (next !== undefined) {
-      model.value = next
-    }
-  })
-
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-    emit('save')
-  })
-})
+watch(host, (el) => {
+  if (el) {
+    mountEditor(el)
+  }
+}, { flush: 'post', immediate: true })
 
 watch(() => model.value, (value) => {
-  if (editor && editor.getValue() !== value) {
+  if (view && view.state.doc.toString() !== value) {
     applyingExternal = true
-    editor.setValue(value)
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: value }
+    })
     applyingExternal = false
   }
 })
 
 watch(() => language, (lang) => {
-  const current = editor?.getModel()
-  if (current && monacoApi) {
-    monacoApi.editor.setModelLanguage(current, lang)
-  }
+  view?.dispatch({ effects: languageComp.reconfigure(languageExtension(lang)) })
 })
 
 watch(() => readOnly, (value) => {
-  editor?.updateOptions({ readOnly: value })
+  view?.dispatch({ effects: readOnlyComp.reconfigure(EditorState.readOnly.of(value)) })
+})
+
+watch(() => colorMode.value, () => {
+  view?.dispatch({ effects: themeComp.reconfigure(harbourTheme(isDark())) })
 })
 
 onBeforeUnmount(() => {
-  editor?.dispose()
-  editor = null
-  if (workerBlob) {
-    URL.revokeObjectURL(workerBlob)
-    workerBlob = null
-  }
+  view?.destroy()
+  view = null
 })
 </script>
 
 <template>
+  <textarea
+    v-if="failed"
+    v-model="model"
+    class="h-full min-h-[28rem] w-full resize-y border-0 bg-[var(--harbour-ink)] p-4 font-mono text-sm text-[var(--harbour-stamp)] outline-none"
+    :readonly="readOnly"
+    :aria-label="`${language} file editor`"
+    spellcheck="false"
+    @keydown.meta.s.prevent="emit('save')"
+    @keydown.ctrl.s.prevent="emit('save')"
+  />
   <div
+    v-else
     ref="editor"
-    class="h-full min-h-[28rem] overflow-hidden rounded-lg border border-default"
+    class="h-full min-h-[28rem] overflow-hidden"
     role="textbox"
-    aria-label="File editor"
+    :aria-label="`${language} file editor`"
     aria-multiline="true"
   />
 </template>

@@ -111,7 +111,15 @@ function actionsFor(volume: VolumeSummary) {
     </template>
 
     <template #actions-cell="{ row }">
-      <div class="flex justify-end">
+      <div class="flex justify-end gap-1">
+        <UButton
+          icon="i-lucide-folder-open"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :to="`/volumes/${encodeURIComponent(row.original.name)}`"
+          aria-label="Browse files"
+        />
         <UDropdownMenu :items="actionsFor(row.original)">
           <UButton
             icon="i-lucide-ellipsis"

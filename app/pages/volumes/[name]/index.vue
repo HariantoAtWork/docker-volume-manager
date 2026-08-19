@@ -16,7 +16,7 @@ const { data: volume, status, error, refresh } = await useFetch<VolumeInspect>(
   () => `/api/volumes/${encodeURIComponent(name.value)}`
 )
 
-const { listing, pending, error: filesError, refresh: refreshFiles } = useVolumeFiles(name, dir)
+const { listing, pending, error: filesError, refresh: refreshFiles } = await useVolumeFiles(name, dir)
 
 function openDirectory(nextPath: string) {
   navigateTo({
@@ -52,6 +52,9 @@ function viaLabel(via: VolumeFileListResponse['via']) {
           label="All volumes"
           class="-ms-2"
         />
+        <p class="text-[11px] uppercase tracking-[0.22em] text-primary">
+          Hold
+        </p>
         <h1 class="font-display text-3xl tracking-tight">
           {{ name }}
         </h1>
@@ -91,7 +94,12 @@ function viaLabel(via: VolumeFileListResponse['via']) {
 
       <section class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <h2 class="font-display text-xl">Files</h2>
+          <div>
+            <h2 class="font-display text-xl">Files</h2>
+            <p class="text-sm text-muted">
+              Open a file to view or edit it, with syntax highlighting.
+            </p>
+          </div>
           <UBadge v-if="listing" color="neutral" variant="subtle">
             via {{ viaLabel(listing.via) }}
           </UBadge>
@@ -105,6 +113,11 @@ function viaLabel(via: VolumeFileListResponse['via']) {
           title="Could not read this folder"
           :description="filesError.message"
         />
+
+        <div v-else-if="pending && !listing" class="space-y-2">
+          <USkeleton class="h-10 w-full max-w-sm" />
+          <USkeleton class="h-48 w-full" />
+        </div>
 
         <UEmpty
           v-else-if="!pending && listing && !listing.entries.length"

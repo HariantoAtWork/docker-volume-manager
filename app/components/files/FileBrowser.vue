@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { VolumeFileEntry } from '../../../shared/types/file'
-import { formatBytes } from '../../utils/format-bytes'
-import { formatTimestamp } from '../../utils/format-timestamp'
+import type { VolumeFileEntry } from '#shared/types/file'
+import { formatBytes } from '~/utils/format-bytes'
+import { formatTimestamp } from '~/utils/format-timestamp'
 
-const { volume, path, entries, loading = false } = defineProps<{
+const { volume, entries, loading = false } = defineProps<{
   volume: string
   path: string
   entries: VolumeFileEntry[]
@@ -82,7 +82,7 @@ function downloadUrl(entry: VolumeFileEntry): string {
       <template #name-cell="{ row }">
         <button
           type="button"
-          class="flex min-w-0 items-center gap-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="flex min-w-0 items-center gap-2 text-left text-highlighted hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           @click="open(row.original)"
         >
           <UIcon
@@ -90,7 +90,7 @@ function downloadUrl(entry: VolumeFileEntry): string {
             class="size-4 shrink-0"
             :class="row.original.type === 'directory' ? 'text-primary' : 'text-muted'"
           />
-          <span class="truncate font-mono text-sm">{{ row.original.name }}</span>
+          <span class="truncate font-mono text-sm underline-offset-4 hover:underline">{{ row.original.name }}</span>
         </button>
       </template>
 

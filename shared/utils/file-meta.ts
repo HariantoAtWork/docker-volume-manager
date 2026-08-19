@@ -1,3 +1,5 @@
+export const MAX_EDIT_BYTES = 2 * 1024 * 1024
+
 const BINARY_EXTENSIONS = new Set([
   '7z', 'aac', 'avi', 'bin', 'bmp', 'class', 'db', 'dll', 'dmg', 'doc', 'docx',
   'eot', 'exe', 'flac', 'flv', 'gif', 'gz', 'ico', 'iso', 'jar', 'jpeg', 'jpg',
@@ -59,7 +61,7 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   svg: 'xml',
   swift: 'swift',
   tf: 'plaintext',
-  toml: 'ini',
+  toml: 'toml',
   ts: 'typescript',
   tsx: 'typescript',
   txt: 'plaintext',
@@ -76,6 +78,7 @@ const LANGUAGE_BY_FILENAME: Record<string, string> = {
   '.gitignore': 'plaintext',
   '.dockerignore': 'plaintext',
   '.env': 'ini',
+  'nginx.conf': 'nginx',
   'cmakelists.txt': 'plaintext'
 }
 

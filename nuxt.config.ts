@@ -7,6 +7,16 @@ export default defineNuxtConfig({
   colorMode: {
     preference: 'dark'
   },
+  icon: {
+    serverBundle: {
+      collections: ['lucide']
+    },
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 512
+    },
+    fallbackToApi: false
+  },
   runtimeConfig: {
     dockerSocket: '',
     dockerHost: '',
@@ -28,19 +38,5 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Inspect Docker volumes and edit the files they hold.' }
       ]
     }
-  },
-  vite: {
-    optimizeDeps: {
-      include: ['monaco-editor']
-    }
-  },
-  nitro: {
-    publicAssets: [
-      {
-        baseURL: '/monaco',
-        dir: 'node_modules/monaco-editor/min',
-        maxAge: 60 * 60 * 24 * 7
-      }
-    ]
   }
 })

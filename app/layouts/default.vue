@@ -73,7 +73,7 @@ useHead({
         </div>
         <UIcon
           v-else
-          :name="appConfig?.docker.ok ? 'i-lucide-unplug' : 'i-lucide-plug-zap'"
+          :name="appConfig?.docker.ok ? 'i-lucide-plug' : 'i-lucide-unplug'"
           class="mx-auto size-4"
           :class="appConfig?.docker.ok ? 'text-success' : 'text-error'"
         />

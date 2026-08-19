@@ -23,6 +23,13 @@ const pretty = computed(() => {
     side="right"
   >
     <template v-if="volume" #body>
+      <UButton
+        :to="`/volumes/${encodeURIComponent(volume.name)}`"
+        icon="i-lucide-folder-open"
+        label="Browse files"
+        class="mb-4"
+        @click="open = false"
+      />
       <dl class="grid gap-3 text-sm">
         <div>
           <dt class="text-muted">Driver</dt>

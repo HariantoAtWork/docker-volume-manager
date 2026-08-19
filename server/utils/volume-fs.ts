@@ -2,12 +2,10 @@ import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:
 import path from 'node:path'
 import type { VolumeFileEntry, VolumeFileListResponse, VolumeFileReadResponse, VolumeFileWriteResponse } from '../../shared/types/file'
 import { fileNameFromPath, joinVolumePath, parentVolumePath, toPosixPath } from '../../shared/utils/volume-path'
-import { isBinaryBuffer, isProbablyBinaryName, languageFromPath } from '../../shared/utils/file-meta'
+import { isBinaryBuffer, isProbablyBinaryName, languageFromPath, MAX_EDIT_BYTES } from '../../shared/utils/file-meta'
 import { execCommand, getHelperContainer } from './helper-container'
 import { resolveDirectAccess } from './volume-access'
 import { withDockerError } from './docker-error'
-
-export const MAX_EDIT_BYTES = 2 * 1024 * 1024
 
 const LIST_SCRIPT = `
 dir="$1"
